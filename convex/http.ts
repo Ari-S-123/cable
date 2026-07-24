@@ -84,9 +84,14 @@ async function verifyStandardWebhook(
   body: string,
   secret: string,
 ): Promise<number> {
-  const id = request.headers.get("webhook-id");
-  const timestamp = request.headers.get("webhook-timestamp");
-  const signatures = request.headers.get("webhook-signature");
+  const id =
+    request.headers.get("webhook-id") ?? request.headers.get("svix-id");
+  const timestamp =
+    request.headers.get("webhook-timestamp") ??
+    request.headers.get("svix-timestamp");
+  const signatures =
+    request.headers.get("webhook-signature") ??
+    request.headers.get("svix-signature");
   if (id === null || timestamp === null || signatures === null)
     throw new Error("MISSING_SIGNATURE");
   const epochSeconds = Number(timestamp);
@@ -331,6 +336,9 @@ http.route({
   method: "POST",
   handler: httpAction(async (ctx, request) => {
     try {
+      if (process.env.TWILIO_ENABLED !== "true") {
+        return response({ accepted: false }, 404);
+      }
       const body = await request.text();
       const token = process.env.TWILIO_AUTH_TOKEN;
       const signature = request.headers.get("x-twilio-signature");

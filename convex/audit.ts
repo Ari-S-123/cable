@@ -1,6 +1,6 @@
 import type { Id } from "./_generated/dataModel";
 import type { MutationCtx } from "./_generated/server";
-import { auditHash } from "./policy/canonicalize";
+import { auditHmac } from "./policy/canonicalize";
 
 /** Minimal redacted metadata permitted in append-only audit records. */
 export type AuditMetadata = Readonly<{
@@ -38,18 +38,28 @@ export async function appendAuditEvent(
     .order("desc")
     .first();
   const previousEventHash = previous?.eventHash;
-  const eventHash = await auditHash({
-    careCircleId: input.careCircleId,
-    actor: input.actor,
-    eventType: input.eventType,
-    resourceType: input.resourceType,
-    resourceId: input.resourceId,
-    resourceVersion: input.resourceVersion,
-    policyDecision: input.policyDecision,
-    metadataRedacted: input.metadataRedacted ?? {},
-    previousEventHash,
-    createdAt: input.createdAt,
-  });
+  const configuredSecret = process.env.AUDIT_HASH_SECRET;
+  if (
+    process.env.INTEGRATION_MODE === "live" &&
+    (configuredSecret === undefined || configuredSecret.length < 32)
+  ) {
+    throw new Error("AUDIT_HASH_SECRET is required in live mode");
+  }
+  const eventHash = await auditHmac(
+    {
+      careCircleId: input.careCircleId,
+      actor: input.actor,
+      eventType: input.eventType,
+      resourceType: input.resourceType,
+      resourceId: input.resourceId,
+      resourceVersion: input.resourceVersion,
+      policyDecision: input.policyDecision,
+      metadataRedacted: input.metadataRedacted ?? {},
+      previousEventHash,
+      createdAt: input.createdAt,
+    },
+    configuredSecret ?? "cable-deterministic-audit-secret-v1",
+  );
   return ctx.db.insert("auditEvents", {
     careCircleId: input.careCircleId,
     actor: input.actor,

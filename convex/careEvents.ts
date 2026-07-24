@@ -582,6 +582,15 @@ export const listVisible = query({
           summary: version.disclosureSnapshot.caregiverDisclosure.text,
           locale: "en-US" as const,
           visibility: "shared_with_consent" as const,
+          consent: {
+            id: consent._id,
+            purpose: consent.purpose,
+            channels: consent.channels,
+            recipientLabels: consent.recipientRefs.map(
+              (recipient) => recipient.displayLabel,
+            ),
+            expiresAt: consent.expiresAt,
+          },
           updatedAt: event.updatedAt,
         };
       }),

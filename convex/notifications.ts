@@ -1,6 +1,7 @@
 import { ConvexError, v } from "convex/values";
 
-import { mutation } from "./_generated/server";
+import { internal } from "./_generated/api";
+import { mutation, query } from "./_generated/server";
 import { appendAuditEvent } from "./audit";
 import {
   assertCareAuthorization,
@@ -40,6 +41,33 @@ function idempotencyKey(
   }
   return key;
 }
+
+/** Returns a bounded, redacted delivery feed for the authenticated care circle. */
+export const listVisible = query({
+  args: { careCircleId: v.id("careCircles") },
+  handler: async (ctx, args) => {
+    await assertCareAuthorization(ctx, args.careCircleId, "caregiver");
+    const notifications = await ctx.db
+      .query("notifications")
+      .withIndex("by_circle_and_created_at", (queryBuilder) =>
+        queryBuilder.eq("careCircleId", args.careCircleId),
+      )
+      .order("desc")
+      .take(50);
+    return notifications.map((notification) => ({
+      id: notification._id,
+      actionProposalId: notification.actionProposalId,
+      channel: notification.channel,
+      category: notification.category,
+      recipientLabel: notification.recipientRef.displayLabel,
+      status: notification.status,
+      attemptCount: notification.attemptCount,
+      lastErrorCode: notification.lastErrorCode,
+      createdAt: notification.createdAt,
+      updatedAt: notification.updatedAt,
+    }));
+  },
+});
 
 /**
  * Atomically rechecks authorization bindings, reserves idempotency, and creates
@@ -89,6 +117,16 @@ export const queueApproved = mutation({
       throw new ConvexError({
         code: "STALE_VERSION",
         message: "The approved content has changed.",
+      });
+    }
+    if (
+      version.channel === "sms" &&
+      process.env.INTEGRATION_MODE === "live" &&
+      process.env.TWILIO_ENABLED !== "true"
+    ) {
+      throw new ConvexError({
+        code: "LIVE_CONFIGURATION_REQUIRED",
+        message: "SMS delivery is disabled for this deployment.",
       });
     }
     const now = Date.now();
@@ -240,6 +278,7 @@ export const queueApproved = mutation({
       metadataRedacted: { status: "queued", channel: version.channel },
       createdAt: now,
     });
+    await ctx.scheduler.runAfter(0, internal.outboxWorker.processNext, {});
     return { notificationId, duplicate: false };
   },
 });

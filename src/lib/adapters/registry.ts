@@ -3,6 +3,7 @@ import "server-only";
 import type { CableAdapters } from "@/lib/adapters/types";
 import { deterministicAdapters } from "@/lib/adapters/deterministic";
 import {
+  createDisabledSmsAdapter,
   createResendAdapter,
   createTwilioAdapter,
 } from "@/lib/adapters/delivery";
@@ -23,10 +24,12 @@ export async function getAdapters(): Promise<CableAdapters> {
       environment.FIREWORKS_MODEL_ID,
     ),
     email: createResendAdapter(environment.RESEND_API_KEY),
-    sms: createTwilioAdapter(
-      environment.TWILIO_ACCOUNT_SID,
-      environment.TWILIO_AUTH_TOKEN,
-    ),
+    sms: environment.TWILIO_ENABLED
+      ? createTwilioAdapter(
+          environment.TWILIO_ACCOUNT_SID ?? "",
+          environment.TWILIO_AUTH_TOKEN ?? "",
+        )
+      : createDisabledSmsAdapter(),
     voice: createElevenLabsAdapter(environment.ELEVENLABS_API_KEY),
     policy: createDaytonaAdapter({
       apiKey: environment.DAYTONA_API_KEY,

@@ -1,5 +1,7 @@
 .next
 .convex
+.agents
+.claude
 node_modules
 coverage
 playwright-report

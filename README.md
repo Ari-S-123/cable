@@ -1,6 +1,6 @@
 # C.A.B.L.E
 
-C.A.B.L.E is a consent-first care-coordination prototype built with Next.js 16, React 19, Convex, WorkOS AuthKit, ElevenLabs, Fireworks, CopilotKit, Daytona, Resend, Twilio, and Braintrust. Its primary demonstration is deliberately narrow: an elder speaks and reviews in Hindi, then chooses whether caregivers and a verified provider may receive exact English disclosures.
+C.A.B.L.E is a consent-first care-coordination prototype built with Next.js 16, React 19, Convex, WorkOS AuthKit, ElevenLabs, Fireworks, CopilotKit, Daytona, Resend, optional Twilio SMS, and Braintrust. Its primary demonstration is deliberately narrow: an elder speaks and reviews in Hindi, then chooses whether caregivers and a verified provider may receive exact English disclosures.
 
 This repository is synthetic-data-only. It is not a medical device, is not clinically validated, does not diagnose, does not recommend medication or treatment, does not override consent, does not create provider accounts, and never calls emergency services automatically. Do not enter real health information, real identities, or uncontrolled email/phone destinations.
 
@@ -12,7 +12,7 @@ This repository is synthetic-data-only. It is not a medical device, is not clini
 - Static versioned English/Hindi safety wrappers. Only allow-listed dynamic slots can be translated.
 - Immutable care-event and action-proposal versions, version-bound consent, one-version caregiver approval, append-only audit chaining, policy-validation records, immutable notification payloads, and lease-based delivery jobs.
 - Current WorkOS identity, organization, role, membership, care-circle, ownership, recipient, consent, approval, version, policy result, and kill-switch checks at protected server boundaries.
-- WorkOS, ElevenLabs, Resend, and Twilio webhook verification over raw bodies, replay protection, monotonic delivery states, redacted responses, strict origin checks, private no-store responses, and bounded rate limiting.
+- WorkOS, ElevenLabs, Resend, and optional Twilio webhook verification over raw bodies, replay protection, monotonic delivery states, redacted responses, strict origin checks, private no-store responses, and bounded rate limiting.
 - ElevenLabs signed browser sessions with captions, mute/resume, text fallback, no raw-audio storage, short-lived nonces, signed allow-listed voice tools, durable private turns, correlation replay protection, and retention cleanup.
 - Fireworks structured extraction/translation adapters with strict Zod parsing, bounded retries, timeouts, and deterministic fallback adapters.
 - Daytona validation with a five-minute ephemeral sandbox, all networking blocked, no credentials or direct identifiers, bounded output, validator hashes, and guaranteed cleanup attempts. Convex repeats the authoritative execution gate after the sandbox passes.
@@ -119,7 +119,7 @@ Set WorkOS and webhook secrets in the Convex deployment. Deploy `convex/schema.t
 - `/webhooks/workos`
 - `/webhooks/elevenlabs`
 - `/webhooks/resend`
-- `/webhooks/twilio`
+- `/webhooks/twilio/message-status` (only when `TWILIO_ENABLED=true`)
 - `/tools/elevenlabs/start_checkin`
 - `/tools/elevenlabs/save_private_turn`
 - `/tools/elevenlabs/extract_event_draft`
@@ -131,7 +131,26 @@ Set WorkOS and webhook secrets in the Convex deployment. Deploy `convex/schema.t
 - `/tools/elevenlabs/transfer_to_caregiver`
 - `/tools/elevenlabs/end_checkin`
 
-The maintenance cron runs every 15 minutes to expire consent, cancel unfinished work, remove expired private turns/session nonces/rate buckets, trim webhook replay receipts, and recover only provably safe email leases.
+The outbox worker runs every minute and is also scheduled immediately when work is queued. The maintenance cron runs every 15 minutes to expire consent, cancel unfinished work, remove expired private turns/session nonces/rate buckets, trim webhook replay receipts, and recover only provably safe email leases.
+
+For a live Resend-only deployment, add these variables to the Convex development deployment with `bunx convex env set NAME value`:
+
+- `WORKOS_CLIENT_ID`
+- `WORKOS_WEBHOOK_SECRET`
+- `INTEGRATION_MODE=live`
+- `EXTERNAL_ACTIONS_ENABLED=true` when you are ready to permit sends
+- `HINDI_CONSENT_TEMPLATE_APPROVED=true` only after the static Hindi wording is approved
+- `TWILIO_ENABLED=false`
+- `ELEVENLABS_WEBHOOK_SECRET`
+- `RESEND_API_KEY`
+- `RESEND_WEBHOOK_SECRET`
+- `RESEND_FROM_ADDRESS`
+- `APPROVED_PROVIDER_EMAILS` as a comma-delimited exact allow-list
+- `DAYTONA_API_KEY`
+- `DAYTONA_API_URL` only when using a non-default Daytona API endpoint
+- `AUDIT_HASH_SECRET`, generated as at least 32 random bytes
+
+`CONVEX_SITE_URL` is supplied automatically by Convex. Do not manually set it. `NEXT_PUBLIC_CONVEX_URL`, WorkOS cookie/API credentials, Fireworks, browser ElevenLabs, and Braintrust variables belong in `.env.local`/Vercel rather than the Convex function environment.
 
 ### ElevenLabs
 
@@ -161,14 +180,15 @@ C.A.B.L.E passes its bounded idempotency key to Resend. Only proven pre-acceptan
 
 ### Twilio
 
-1. Provision a controlled sender and set `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, and `TWILIO_PHONE_NUMBER` in E.164 form.
-2. Configure the status callback at `https://<convex-site>/webhooks/twilio`.
+Twilio is optional. To run email-only, set `TWILIO_ENABLED=false` in both `.env.local` and Convex, leave all `TWILIO_*` values and `APPROVED_PROVIDER_PHONES` empty, and create email provider contacts only.
+
+To enable SMS later, set `TWILIO_ENABLED=true`, provision a controlled sender, set `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_PHONE_NUMBER`, and `APPROVED_PROVIDER_PHONES` in both required runtimes. The worker automatically supplies `https://<convex-site>/webhooks/twilio/message-status` as the status callback.
 
 Twilio transport timeouts are ambiguous. C.A.B.L.E records `delivery_unknown`, prevents an automatic duplicate SMS, and requires manual review.
 
 ### Approved provider destinations
 
-`APPROVED_PROVIDER_EMAILS` and `APPROVED_PROVIDER_PHONES` are comma-delimited live allow-lists. A caregiver also needs `canManageProviderContacts`; a contact must be active and independently verified for the selected channel. Public queries return masked destinations. Disabling a contact blocks the execution recheck immediately.
+`APPROVED_PROVIDER_EMAILS` is a comma-delimited live allow-list. `APPROVED_PROVIDER_PHONES` is required only when Twilio is enabled. A caregiver also needs `canManageProviderContacts`; a contact must be active and independently verified for the selected channel. Public queries return masked destinations. Disabling a contact blocks the execution recheck immediately.
 
 ### Hindi consent approval
 
@@ -195,6 +215,7 @@ The controls are intentionally independent:
 - `INTEGRATION_MODE=deterministic|live` selects synthetic or vendor adapters.
 - `DEMO_MODE=true|false` controls whether the isolated browser demo is available.
 - `EXTERNAL_ACTIONS_ENABLED=true|false` is the global side-effect kill switch.
+- `TWILIO_ENABLED=true|false` independently enables or removes live SMS.
 - Each care circle has a separate `externalActionsEnabled` switch.
 - `HINDI_CONSENT_TEMPLATE_APPROVED=true|false` gates live Hindi grants and sends.
 
@@ -247,7 +268,7 @@ bun run build
 
 Unit and integration suites are intentionally compact for the current milestone. The deterministic demo and policy evaluation are the primary credential-free acceptance paths.
 
-Live credentials are not included and repository checks do not claim that external accounts are provisioned. After supplying credentials, manually smoke-test WorkOS/Convex membership reconciliation, ElevenLabs browser and phone sessions, Fireworks inference, Daytona cleanup, Resend delivery/webhooks, Twilio accepted/unknown delivery handling, Braintrust redaction, and a Vercel preview. Missing credentials mean those checks are unexecuted—not successful.
+Live credentials are not included and repository checks do not claim that external accounts are provisioned. After supplying credentials, manually smoke-test WorkOS/Convex membership reconciliation, ElevenLabs browser sessions, Fireworks inference, Daytona cleanup, Resend delivery/webhooks, Braintrust redaction, and a Vercel preview. Test Twilio accepted/unknown delivery handling only if SMS is enabled. Missing credentials mean those checks are unexecuted—not successful.
 
 ## Manual test checklist
 

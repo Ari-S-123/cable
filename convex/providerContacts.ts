@@ -142,6 +142,7 @@ export const upsertAllowListed = mutation({
       });
     }
     const deterministic = process.env.INTEGRATION_MODE !== "live";
+    const smsEnabled = deterministic || process.env.TWILIO_ENABLED === "true";
     const emailAllowed =
       email === undefined ||
       (deterministic
@@ -149,11 +150,12 @@ export const upsertAllowListed = mutation({
         : allowList(process.env.APPROVED_PROVIDER_EMAILS).has(email));
     const phoneAllowed =
       phoneE164 === undefined ||
-      (deterministic
-        ? /^\+155501\d{4}$/u.test(phoneE164)
-        : allowList(process.env.APPROVED_PROVIDER_PHONES).has(
-            phoneE164.toLowerCase(),
-          ));
+      (smsEnabled &&
+        (deterministic
+          ? /^\+155501\d{4}$/u.test(phoneE164)
+          : allowList(process.env.APPROVED_PROVIDER_PHONES).has(
+              phoneE164.toLowerCase(),
+            )));
     if (
       !emailAllowed ||
       !phoneAllowed ||

@@ -52,3 +52,30 @@ export async function auditHash(input: AuditCanonicalInput): Promise<string> {
     byte.toString(16).padStart(2, "0"),
   ).join("");
 }
+
+/** Computes a keyed, domain-separated HMAC for the append-only audit chain. */
+export async function auditHmac(
+  input: AuditCanonicalInput,
+  secret: string,
+): Promise<string> {
+  if (secret.length < 32) {
+    throw new Error("AUDIT_HASH_SECRET must contain at least 32 characters");
+  }
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const signature = await crypto.subtle.sign(
+    "HMAC",
+    key,
+    new TextEncoder().encode(
+      `cable:audit:v1:${JSON.stringify(normalize(input))}`,
+    ),
+  );
+  return Array.from(new Uint8Array(signature), (byte) =>
+    byte.toString(16).padStart(2, "0"),
+  ).join("");
+}

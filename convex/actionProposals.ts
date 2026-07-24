@@ -49,6 +49,18 @@ export const saveForReview = mutation({
       ctx.db.get(args.consentId),
       ctx.db.get(args.providerContactId),
     ]);
+    if (
+      (args.channel === "sms" &&
+        process.env.INTEGRATION_MODE === "live" &&
+        process.env.TWILIO_ENABLED !== "true") ||
+      (args.channel === "email" && args.actionType !== "send_provider_email") ||
+      (args.channel === "sms" && args.actionType !== "send_provider_sms")
+    ) {
+      throw new ConvexError({
+        code: "LIVE_CONFIGURATION_REQUIRED",
+        message: "The requested delivery channel is not enabled.",
+      });
+    }
     if (event === null || consent === null || provider === null) {
       throw new ConvexError({
         code: "FORBIDDEN",
@@ -283,8 +295,19 @@ export const listForReview = query({
             id: proposal._id,
             version: proposal.currentVersion,
             status: "waiting_for_elder" as const,
+            updatedAt: proposal.updatedAt,
           };
         }
+        const validation = await ctx.db
+          .query("policyValidations")
+          .withIndex("by_action_version_and_hash", (queryBuilder) =>
+            queryBuilder
+              .eq("actionProposalId", proposal._id)
+              .eq("actionVersion", proposal.currentVersion)
+              .eq("payloadHash", version.payloadHash),
+          )
+          .order("desc")
+          .first();
         return {
           id: proposal._id,
           version: proposal.currentVersion,
@@ -297,6 +320,15 @@ export const listForReview = query({
           payloadHash: version.payloadHash,
           explanation: version.explanation,
           limitations: version.limitations,
+          validation:
+            validation === null
+              ? undefined
+              : {
+                  decision: validation.decision,
+                  failedRules: validation.failedRules,
+                  expiresAt: validation.expiresAt,
+                },
+          updatedAt: proposal.updatedAt,
         };
       }),
     );

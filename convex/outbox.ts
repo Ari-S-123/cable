@@ -1,5 +1,6 @@
 import { ConvexError, v } from "convex/values";
 
+import { internal } from "./_generated/api";
 import { internalMutation } from "./_generated/server";
 import { appendAuditEvent } from "./audit";
 
@@ -218,6 +219,12 @@ export const completeLease = internalMutation({
         : { lastErrorCode: args.errorCode }),
       updatedAt: args.nowEpochMs,
     });
+    if (notification.actionProposalId !== undefined) {
+      await ctx.db.patch(notification.actionProposalId, {
+        status: args.outcome === "accepted" ? "completed" : args.outcome,
+        updatedAt: args.nowEpochMs,
+      });
+    }
     await ctx.db.patch(
       job._id,
       mayRetry
@@ -268,6 +275,13 @@ export const completeLease = internalMutation({
       metadataRedacted: { status: args.outcome, channel: notification.channel },
       createdAt: args.nowEpochMs,
     });
+    if (mayRetry) {
+      await ctx.scheduler.runAfter(
+        retryDelays[retryIndex]!,
+        internal.outboxWorker.processNext,
+        {},
+      );
+    }
     return { status: args.outcome, retryScheduled: mayRetry };
   },
 });

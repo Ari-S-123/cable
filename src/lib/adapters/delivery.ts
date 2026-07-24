@@ -90,6 +90,7 @@ export function createResendAdapter(apiKey: string): EmailAdapter {
 export function createTwilioAdapter(
   accountSid: string,
   authToken: string,
+  statusCallbackUrl?: string,
 ): SmsAdapter {
   if (!/^AC[a-f0-9]{32}$/u.test(accountSid) || authToken.length < 16) {
     throw new Error("Valid Twilio credentials are required");
@@ -105,6 +106,9 @@ export function createTwilioAdapter(
           from: input.from,
           to: input.to,
           body: input.message.body,
+          ...(statusCallbackUrl === undefined
+            ? {}
+            : { statusCallback: statusCallbackUrl }),
         });
         return {
           ok: true,
@@ -117,6 +121,23 @@ export function createTwilioAdapter(
       } catch (error: unknown) {
         return { ok: false, error: unknownDeliveryError("sms", error) };
       }
+    },
+  };
+}
+
+/** Builds an SMS adapter that fails closed when Twilio is intentionally disabled. */
+export function createDisabledSmsAdapter(): SmsAdapter {
+  return {
+    async send(): Promise<AdapterResult<DeliveryAdapterValue>> {
+      return {
+        ok: false,
+        error: {
+          code: "PROVIDER_REJECTED",
+          message: "SMS delivery is disabled for this deployment.",
+          retryable: false,
+          acceptedByProvider: false,
+        },
+      };
     },
   };
 }

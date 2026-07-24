@@ -6,7 +6,7 @@ import { Resend } from "resend";
 import twilio from "twilio";
 import { v } from "convex/values";
 
-import { action } from "./_generated/server";
+import { internalAction } from "./_generated/server";
 
 const leaseNextReference =
   makeFunctionReference<"mutation">("outbox:leaseNext");
@@ -18,7 +18,7 @@ const completeLeaseReference = makeFunctionReference<"mutation">(
 );
 
 /** Leases, reauthorizes, and performs at most one immutable provider request. */
-export const processNext = action({
+export const processNext = internalAction({
   args: {},
   returns: v.object({ processed: v.boolean() }),
   handler: async (ctx) => {
@@ -79,13 +79,18 @@ export const processNext = action({
           externalMessageId = response.data.id;
         }
       } else {
+        if (process.env.TWILIO_ENABLED !== "true") {
+          throw new Error("TWILIO_DISABLED");
+        }
         const sid = process.env.TWILIO_ACCOUNT_SID;
         const authToken = process.env.TWILIO_AUTH_TOKEN;
         const from = process.env.TWILIO_PHONE_NUMBER;
+        const convexSiteUrl = process.env.CONVEX_SITE_URL;
         if (
           sid === undefined ||
           authToken === undefined ||
-          from === undefined
+          from === undefined ||
+          convexSiteUrl === undefined
         ) {
           throw new Error("TWILIO_NOT_CONFIGURED");
         }
@@ -95,6 +100,7 @@ export const processNext = action({
           from,
           to: authorization.destination,
           body: authorization.payload.body,
+          statusCallback: `${convexSiteUrl}/webhooks/twilio/message-status`,
         });
         outcome = "accepted";
         externalMessageId = message.sid;

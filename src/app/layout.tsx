@@ -4,6 +4,7 @@ import { Geist, Newsreader, Noto_Sans_Devanagari } from "next/font/google";
 import { headers } from "next/headers";
 import type { ReactNode } from "react";
 
+import { LiveServicesProvider } from "@/components/live-services-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
 import { LocaleSchema } from "@/lib/contracts";
@@ -50,6 +51,15 @@ export default async function RootLayout({
   const requestedLocale = (await headers()).get("x-cable-locale");
   const parsedLocale = LocaleSchema.safeParse(requestedLocale);
   const locale = parsedLocale.success ? parsedLocale.data : "en-US";
+  const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL;
+  const content =
+    process.env.INTEGRATION_MODE === "live" && convexUrl !== undefined ? (
+      <LiveServicesProvider convexUrl={convexUrl}>
+        {children}
+      </LiveServicesProvider>
+    ) : (
+      children
+    );
   return (
     <html
       lang={locale}
@@ -57,7 +67,7 @@ export default async function RootLayout({
       suppressHydrationWarning
     >
       <body>
-        <TooltipProvider>{children}</TooltipProvider>
+        <TooltipProvider>{content}</TooltipProvider>
         <Toaster position="bottom-center" richColors />
       </body>
     </html>

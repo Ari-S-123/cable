@@ -225,6 +225,23 @@ export const applyDeliveryEvent = mutation({
           : { lastErrorCode: args.providerCode }),
         updatedAt: Date.now(),
       });
+      if (
+        notification.actionProposalId !== undefined &&
+        ["delivered", "permanent_failure", "delivery_unknown"].includes(
+          args.nextStatus,
+        )
+      ) {
+        const proposalStatus =
+          args.nextStatus === "delivered"
+            ? "completed"
+            : args.nextStatus === "permanent_failure"
+              ? "permanent_failure"
+              : "delivery_unknown";
+        await ctx.db.patch(notification.actionProposalId, {
+          status: proposalStatus,
+          updatedAt: args.occurredAt,
+        });
+      }
       await appendAuditEvent(ctx, {
         careCircleId: notification.careCircleId,
         actor: { kind: "webhook", opaqueId: args.provider },
