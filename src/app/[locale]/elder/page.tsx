@@ -6,9 +6,11 @@ import {
   Mic,
   ShieldCheck,
 } from "lucide-react";
+import { withAuth } from "@workos-inc/authkit-nextjs";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
+import { z } from "zod";
 
 import { AppShell } from "@/components/app-shell";
 import type { NavigationItem } from "@/components/app-navigation";
@@ -25,6 +27,18 @@ import {
 import { routing } from "@/i18n/routing";
 import type { Locale } from "@/lib/contracts";
 
+const WorkOSProfileSchema = z.object({
+  name: z.string().trim().min(1).max(160).nullable(),
+  firstName: z.string().trim().min(1).max(80).nullable(),
+});
+
+/** Resolves a short, bounded greeting name from a verified WorkOS profile. */
+function resolveWorkOSGreetingName(user: unknown, fallback: string): string {
+  const profile = WorkOSProfileSchema.safeParse(user);
+  if (!profile.success) return fallback;
+  return profile.data.firstName ?? profile.data.name ?? fallback;
+}
+
 /** Large-control elder home that does not expose any synthetic event as live data. */
 export default async function ElderHome({
   params,
@@ -36,6 +50,21 @@ export default async function ElderHome({
   const t = await getTranslations("Elder");
   const c = await getTranslations("Common");
   const base = `/${locale}/elder`;
+  const liveConfigured = process.env.INTEGRATION_MODE === "live";
+  let greetingName = locale === "hi-IN" ? "आशा" : "Asha";
+  if (liveConfigured) {
+    const authentication = await withAuth({ ensureSignedIn: true });
+    if (
+      authentication.organizationId === undefined ||
+      authentication.role !== "elder"
+    ) {
+      redirect(`/${locale}`);
+    }
+    greetingName = resolveWorkOSGreetingName(
+      authentication.user,
+      locale === "hi-IN" ? "मित्र" : "there",
+    );
+  }
   const items: readonly NavigationItem[] = [
     { label: t("navCheckin"), href: base, icon: "checkin" },
     { label: t("navShared"), href: `${base}/shared`, icon: "shared" },
@@ -47,8 +76,6 @@ export default async function ElderHome({
       icon: "preferences",
     },
   ];
-  const liveConfigured = process.env.INTEGRATION_MODE === "live";
-
   return (
     <AppShell locale={locale} userRole="elder" items={items}>
       <div className="elder-surface">
@@ -58,7 +85,9 @@ export default async function ElderHome({
               <LockKeyhole aria-hidden="true" />
               {c("private")}
             </Badge>
-            <h1 className="text-4xl sm:text-5xl">{t("title")}</h1>
+            <h1 className="text-4xl sm:text-5xl">
+              {t("title", { name: greetingName })}
+            </h1>
             <p className="mt-4 max-w-2xl text-lg leading-8 text-muted-foreground">
               {t("subtitle")}
             </p>

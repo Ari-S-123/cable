@@ -21,7 +21,6 @@ import {
   useMutation,
   useQuery,
 } from "convex/react";
-import Link from "next/link";
 import { useMemo, useState, type FormEvent } from "react";
 import { toast } from "sonner";
 
@@ -728,7 +727,9 @@ export function LiveCaregiverWorkspace({
             <AlertTitle>Authentication required</AlertTitle>
             <AlertDescription>
               <Button asChild className="mt-4">
-                <Link href="/login">Sign in with WorkOS</Link>
+                {/* OAuth initiation requires a document navigation, not Next.js RSC navigation. */}
+                {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
+                <a href="/login">Sign in with WorkOS</a>
               </Button>
             </AlertDescription>
           </Alert>

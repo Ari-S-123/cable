@@ -13,6 +13,10 @@
     "headline": "Care coordination that asks before it shares.",
     "subhead": "An elder speaks in Hindi, reviews exactly what C.A.B.L.E understood, and chooses what caregivers and a verified provider may receive in English.",
     "signIn": "Sign in",
+    "signOut": "Sign out",
+    "openWorkspace": "Open workspace",
+    "membershipRequiredTitle": "Your WorkOS account is signed in but is not ready for C.A.B.L.E",
+    "membershipRequiredBody": "{email} has no organization membership with an elder or caregiver role. Add the account to your WorkOS organization with one of those exact role slugs, then sign out and sign in again.",
     "openDemo": "Open the synthetic demo",
     "exploreElder": "Explore elder home",
     "reassurance": "Nothing personal leaves the private session without specific, current permission.",
@@ -32,7 +36,7 @@
     "safetyBody": "Use fictional personas and synthetic health information only. This prototype is not clinically validated, does not diagnose or recommend treatment, does not override consent, and never calls emergency services automatically."
   },
   "Elder": {
-    "title": "Good afternoon, Asha.",
+    "title": "Good afternoon, {name}.",
     "subtitle": "Your check-in starts privately. You decide whether anything is shared.",
     "start": "Start voice check-in",
     "textAlternative": "Use a text check-in instead",

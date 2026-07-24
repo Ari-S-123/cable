@@ -3,9 +3,11 @@ import {
   Check,
   Languages,
   LockKeyhole,
+  LogOut,
   ShieldCheck,
   Sparkles,
 } from "lucide-react";
+import { withAuth } from "@workos-inc/authkit-nextjs";
 import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import Link from "next/link";
@@ -19,7 +21,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { routing } from "@/i18n/routing";
-import type { Locale } from "@/lib/contracts";
+import { RoleSchema, type Locale } from "@/lib/contracts";
 
 /** Creates localized landing metadata without indexing the synthetic prototype. */
 export async function generateMetadata({
@@ -43,6 +45,15 @@ export default async function LandingPage({
   const locale = candidate as Locale;
   setRequestLocale(locale);
   const t = await getTranslations("Landing");
+  const authentication =
+    process.env.INTEGRATION_MODE === "live" ? await withAuth() : undefined;
+  const parsedRole = RoleSchema.safeParse(authentication?.role);
+  const role = parsedRole.success ? parsedRole.data : undefined;
+  const workspaceHref = role === undefined ? undefined : `/${locale}/${role}`;
+  const hasIncompleteMembership =
+    authentication?.user !== null &&
+    authentication?.user !== undefined &&
+    (authentication.organizationId === undefined || role === undefined);
   const decisions = [
     {
       index: "01",
@@ -73,13 +84,44 @@ export default async function LandingPage({
         <BrandMark />
         <div className="flex items-center gap-2">
           <LocaleSwitcher locale={locale} pathname={`/${locale}`} />
-          <Button asChild variant="outline" className="hidden sm:inline-flex">
-            <Link href="/login">{t("signIn")}</Link>
-          </Button>
+          {authentication?.user === null || authentication === undefined ? (
+            <Button asChild variant="outline" className="hidden sm:inline-flex">
+              {/* OAuth initiation requires a document navigation, not Next.js RSC navigation. */}
+              {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
+              <a href="/login">{t("signIn")}</a>
+            </Button>
+          ) : (
+            <>
+              {workspaceHref !== undefined ? (
+                <Button asChild className="hidden sm:inline-flex">
+                  <Link href={workspaceHref}>{t("openWorkspace")}</Link>
+                </Button>
+              ) : null}
+              <form action="/logout" method="post">
+                <Button type="submit" variant="outline">
+                  <LogOut aria-hidden="true" />
+                  {t("signOut")}
+                </Button>
+              </form>
+            </>
+          )}
         </div>
       </header>
 
       <main id="main-content" className="reflow-safe">
+        {hasIncompleteMembership ? (
+          <div className="mx-auto max-w-7xl px-4 pt-6 sm:px-8">
+            <Alert className="border-destructive/40 bg-destructive/5 p-5">
+              <ShieldCheck aria-hidden="true" className="size-5" />
+              <AlertTitle>{t("membershipRequiredTitle")}</AlertTitle>
+              <AlertDescription>
+                {t("membershipRequiredBody", {
+                  email: authentication.user.email,
+                })}
+              </AlertDescription>
+            </Alert>
+          </div>
+        ) : null}
         <section className="relative mx-auto grid max-w-7xl gap-12 px-4 pb-20 pt-12 sm:px-8 lg:grid-cols-[1.12fr_0.88fr] lg:items-center lg:py-24">
           <div className="relative z-10 max-w-3xl">
             <Badge
@@ -103,7 +145,11 @@ export default async function LandingPage({
                 </Link>
               </Button>
               <Button asChild size="lg" variant="outline">
-                <Link href={`/${locale}/elder`}>{t("exploreElder")}</Link>
+                <Link href={workspaceHref ?? `/${locale}/elder`}>
+                  {workspaceHref === undefined
+                    ? t("exploreElder")
+                    : t("openWorkspace")}
+                </Link>
               </Button>
             </div>
             <p className="mt-5 flex items-start gap-2 text-sm text-muted-foreground">
