@@ -1,0 +1,9 @@
+.next
+.convex
+node_modules
+coverage
+playwright-report
+test-results
+convex/_generated
+bun.lock
+cable-mvp-implementation-spec.md

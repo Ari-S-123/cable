@@ -1,0 +1,63 @@
+{
+  "Common": {
+    "synthetic": "Synthetic demonstration",
+    "private": "Private",
+    "sharedWithConsent": "Shared with consent",
+    "notEmergency": "C.A.B.L.E is not an emergency service and does not provide medical advice.",
+    "skipToContent": "Skip to content"
+  },
+  "Landing": {
+    "metaTitle": "Consent-first care coordination",
+    "metaDescription": "A synthetic Hindi-to-English voice care-coordination demonstration with explicit consent and caregiver approval.",
+    "eyebrow": "Synthetic care-coordination prototype",
+    "headline": "Care coordination that asks before it shares.",
+    "subhead": "An elder speaks in Hindi, reviews exactly what C.A.B.L.E understood, and chooses what caregivers and a verified provider may receive in English.",
+    "signIn": "Sign in",
+    "openDemo": "Open the synthetic demo",
+    "exploreElder": "Explore elder home",
+    "reassurance": "Nothing personal leaves the private session without specific, current permission.",
+    "sampleLabel": "Hindi → English",
+    "sampleTitle": "One fact. Two exact views.",
+    "exactTranslation": "Exact English disclosure",
+    "consentBound": "Bound to consent",
+    "methodEyebrow": "The safety model",
+    "methodTitle": "Three decisions—not one vague approval.",
+    "confirmTitle": "Confirm the facts",
+    "confirmBody": "The elder corrects what C.A.B.L.E heard before any disclosure question appears.",
+    "consentTitle": "Choose the disclosure",
+    "consentBody": "Permission names exact details, recipients, channels, purpose, language, and expiry.",
+    "approveTitle": "Approve the action",
+    "approveBody": "A caregiver reviews the immutable English message before a deterministic policy gate may queue it.",
+    "safetyTitle": "Prototype boundary",
+    "safetyBody": "Use fictional personas and synthetic health information only. This prototype is not clinically validated, does not diagnose or recommend treatment, does not override consent, and never calls emergency services automatically."
+  },
+  "Elder": {
+    "title": "Good afternoon, Asha.",
+    "subtitle": "Your check-in starts privately. You decide whether anything is shared.",
+    "start": "Start voice check-in",
+    "textAlternative": "Use a text check-in instead",
+    "nextCheckin": "Next routine check-in",
+    "nextCheckinValue": "Tomorrow at 10:00 AM",
+    "lastOutcome": "Last coordination outcome",
+    "lastOutcomeValue": "No live activity yet",
+    "privacyTitle": "Your voice session is private",
+    "privacyBody": "Caregivers cannot see a transcript or draft. They see only an exact update after you clearly agree.",
+    "navCheckin": "Check in",
+    "navShared": "What I shared",
+    "navPeople": "My people",
+    "navActivity": "Activity",
+    "navPreferences": "Preferences"
+  },
+  "Caregiver": {
+    "title": "Today",
+    "subtitle": "Consent-scoped updates and actions that need a human decision.",
+    "emptyTitle": "No live care updates",
+    "emptyBody": "Connect WorkOS and Convex to load authorized care-circle data. The separate synthetic demo never appears here.",
+    "navToday": "Today",
+    "navUpdates": "Care updates",
+    "navAppointments": "Appointments",
+    "navPeople": "People",
+    "navActivity": "Activity",
+    "navSettings": "Settings"
+  }
+}

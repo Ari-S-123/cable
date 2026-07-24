@@ -1,0 +1,6 @@
+[install]
+saveTextLockfile = true
+linker = "hoisted"
+
+[run]
+shell = "system"
